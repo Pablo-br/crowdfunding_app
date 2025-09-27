@@ -70,7 +70,7 @@ module crowdfunding_app::crowdfunding_app{
         treasury: coin::zero<SUI>(ctx),
         contributions: vector::empty<Contribution>(),
     };
-    transfer::transfer(cam, ctx.sender()); //IMPORTANTE VER QUE HACER AQUI. SI DEJAR COMO ESTÁ O BIEN MANDAR AL ADMIN O OTRA COSA
+    transfer::transfer(cam, ctx.sender()); //IMPORTANTE VER QUE HACER AQUI. SI DEJAR COMO ESTÁ O BIEN MANDAR AL ADMIN U OTRA COSA
 }
 
 
@@ -104,6 +104,36 @@ module crowdfunding_app::crowdfunding_app{
         vector::push_back(&mut campaign.contributions, contribution);
 
     }
+
+
+    public entry fun refund(campaign: &mut Campaign, ctx: &mut TxContext) { //PRIMERA VERSIÓN ¡¡¡¡PONER QUE SOLO ADMIN O PERSONAS PERMITIDAS (AdminCap)!!!!!
+
+        // Solo el admin puede ejecutar el reembolso
+        assert!(tx_context::sender(ctx) == campaign.admin, 1);
+        // Solo permite reembolsos si la campaña NO alcanzó el goal
+        assert!(campaign.total_raised < campaign.goal, 0);
+
+        let mut i = 0;
+        while (i < vector::length(&campaign.contributions)) {
+            let mut contribution = vector::borrow_mut(&mut campaign.contributions, i); //da una referencia mutable
+            if (!contribution.refunded) {
+                // Marca como reembolsada
+                contribution.refunded = true;
+
+                // Separa la cantidad correspondiente del tesoro
+                let refund_coin = coin::split(&mut campaign.treasury, contribution.amount, ctx);
+
+                // Transfiere el reembolso al contribuyente
+                //transfer::transfer(refund_coin, contribution.contributor);
+                transfer::public_transfer(refund_coin, contribution.contributor);
+
+            };
+            i = i + 1;
+        };
+        //desactiva la campaña
+        campaign.is_active = false;
+    }
+
 
 
 
