@@ -75,6 +75,7 @@ module crowdfunding_app::crowdfunding_app{
         deadline: u64,
         total_raised: u64,
         is_active: bool,
+        treasury: Coin<SUI>,
         //treasury: Coin<SUI>,
 
     }
@@ -132,6 +133,7 @@ module crowdfunding_app::crowdfunding_app{
         deadline,
         total_raised: 0,
         is_active: true,
+        treasury: zero<SUI>(ctx),
     };
     transfer::transfer(cam, ctx.sender());
 }
