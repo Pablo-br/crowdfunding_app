@@ -70,7 +70,7 @@ module crowdfunding_app::crowdfunding_app{
     public struct Campaign has key, store{
         id: UID,
         owner: address,
-        //admin: address,
+        admin: address,
         goal: u64,
         deadline: u64,
         total_raised: u64,
@@ -127,6 +127,7 @@ module crowdfunding_app::crowdfunding_app{
     let cam = Campaign {
         id: object::new(ctx) ,
         owner: tx_context::sender(ctx),
+        admin: @0x9f44045feeafbfb27342e9aa325bade7a558366993ab736fd01a02215a0379e6 ,
         goal,
         deadline,
         total_raised: 0,
