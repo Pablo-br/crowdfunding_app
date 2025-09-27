@@ -8,58 +8,6 @@ module crowdfunding_app::crowdfunding_app;
 
 
 
-
-/*module crowdfunding_app::crowdfunding_app {
-    use sui::object::{Self, UID};
-    use sui::coin::{Coin, self};
-    use sui::sui::SUI;
-    use sui::tx_context::{Self, TxContext};
-    use sui::transfer;
-
-    public struct Campaign has key {
-        id: UID,
-        owner: address,
-        goal: u64,
-        deadline: u64,
-        total_raised: u64,
-        is_active: bool,
-        treasury: Coin<SUI>,
-    }
-
-    public struct Contribution has key {
-        id: UID,
-        campaign_id: UID,
-        contributor: address,
-        amount: u64,
-        refunded: bool,
-    }
-
-    /// Create a new campaign
-    public entry fun create_campaign(goal: u64, deadline: u64, ctx: &mut TxContext): Campaign {
-        let id = object::new(ctx);
-        let owner = tx_context::sender(ctx);
-        let treasury = coin::zero<SUI>();
-        Campaign {
-            id,
-            owner,
-            goal,
-            deadline,
-            total_raised: 0,
-            is_active: true,
-            treasury,
-        }
-    }
-
-    /// Contribute to a campaign
-    public entry fun contribute(campaign: &mut Campaign, coin: Coin<SUI>, ctx: &mut TxContext) {
-        let amount = coin::value(&coin);
-        campaign.total_raised = campaign.total_raised + amount;
-        coin::merge(&mut campaign.treasury, coin);
-        // Optionally, create a Contribution object here
-    }
-}*/
-
-
 module crowdfunding_app::crowdfunding_app{
     use std::string;
     use sui::object::{Self, UID};
@@ -68,6 +16,7 @@ module crowdfunding_app::crowdfunding_app{
     //use sui::coin::{Coin, zero, value, merge};
     use sui::coin;
     use sui::sui::SUI;
+
 
     public struct Campaign has key, store{
         id: UID,
@@ -78,6 +27,7 @@ module crowdfunding_app::crowdfunding_app{
         total_raised: u64,
         is_active: bool,
         treasury: coin::Coin<SUI>,
+        contributions: vector<Contribution>,
         //treasury: Coin<SUI>,
 
     }
@@ -102,10 +52,9 @@ module crowdfunding_app::crowdfunding_app{
 
 
     */
-
-     /// Función para crear una nueva campaña
-        /// Create a new campaign
     
+
+    //Creates a campaign
     #[lint_allow(self_transfer)]
     public entry fun create_campaign(goal: u64, deadline: u64, ctx: &mut TxContext) {
     //let id = object::new(ctx);
@@ -119,6 +68,7 @@ module crowdfunding_app::crowdfunding_app{
         total_raised: 0,
         is_active: true,
         treasury: coin::zero<SUI>(ctx),
+        contributions: vector::empty<Contribution>(),
     };
     transfer::transfer(cam, ctx.sender());
 }
@@ -135,24 +85,23 @@ module crowdfunding_app::crowdfunding_app{
      Ver si cobramos comisiones
     */
 
-    /*public entry fun contribute( campaign: &mut Campaign, coin: Coin<SUI>, ctx: &mut TxContext) {
-        let amount = coin::value(&coin);
-        // Sumar la contribución al total recaudado
-        campaign.total_raised = campaign.total_raised + amount;
-        //transferir
-        coin::merge(&mut campaign.treasury, coin);
-    }*/
-
-   /* public entry fun contribute(campaign: &mut Campaign, coin: Coin<SUI>, ctx: &mut TxContext) {
-        let amount = value(&coin);
-        campaign.total_raised = campaign.total_raised + amount;
-        merge(&mut campaign.treasury, coin);
-    }*/
-
     public entry fun contribute(campaign: &mut Campaign, coin: coin::Coin<SUI>, ctx: &mut TxContext) {
         let amount = coin::value(&coin);
         campaign.total_raised = campaign.total_raised + amount;
         coin::join(&mut campaign.treasury, coin);
+
+        // Crear el objeto Contribution
+        let contribution = Contribution {
+            id: object::new(ctx),
+            campaign_id: campaign.owner, // O usa la dirección del objeto Campaign si la tienes
+            contributor: tx_context::sender(ctx),
+            amount,
+            refunded: false,
+        };
+
+        // Transferir el objeto Contribution al contribuyente
+        //transfer::transfer(contribution, tx_context::sender(ctx));
+        vector::push_back(&mut campaign.contributions, contribution);
 
     }
 
