@@ -16,6 +16,8 @@ module crowdfunding_app::crowdfunding_app{
     //use sui::coin::{Coin, zero, value, merge};
     use sui::coin;
     use sui::sui::SUI;
+    use sui::event;
+
 
 
 
@@ -37,6 +39,15 @@ module crowdfunding_app::crowdfunding_app{
             new_admin,
         )
     }*/
+
+    // 👇 añadido: evento para que el frontend pueda listar campañas
+    public struct CampaignCreated has copy, drop {
+        campaign_id: address,
+        owner: address,
+        goal: u64,
+        deadline: u64,
+    }
+
 
 
     public struct Campaign has key, store{
@@ -78,23 +89,34 @@ module crowdfunding_app::crowdfunding_app{
     //Creates a campaign
     #[lint_allow(self_transfer)]
     public entry fun create_campaign(goal: u64, deadline: u64, ctx: &mut TxContext) {
-    //let id = object::new(ctx);
-    //let owner = tx_context::sender(ctx);
-    let cam = Campaign {
-        id: object::new(ctx) ,
-        owner: tx_context::sender(ctx),
-        admin: @0x9f44045feeafbfb27342e9aa325bade7a558366993ab736fd01a02215a0379e6 ,
-        goal,
-        deadline,
-        total_raised: 0,
-        is_active: true,
-        treasury: coin::zero<SUI>(ctx),
-        contributions: vector::empty<Contribution>(),
-    };
-    //transfer::transfer(cam, ctx.sender()); //IMPORTANTE VER QUE HACER AQUI. SI DEJAR COMO ESTÁ O BIEN MANDAR AL ADMIN U OTRA COSA
-    transfer::share_object(cam);
+        //let id = object::new(ctx);
+        //let owner = tx_context::sender(ctx);
+        let cam = Campaign {
+            id: object::new(ctx) ,
+            owner: tx_context::sender(ctx),
+            admin: @0x9f44045feeafbfb27342e9aa325bade7a558366993ab736fd01a02215a0379e6 ,
+            goal,
+            deadline,
+            total_raised: 0,
+            is_active: true,
+            treasury: coin::zero<SUI>(ctx),
+            contributions: vector::empty<Contribution>(),
+        };
 
-}
+        // 👇 emitimos evento para el frontend
+        event::emit(CampaignCreated {
+            campaign_id: object::uid_to_address(&cam.id),
+            owner: cam.owner,
+            goal,
+            deadline,
+        });
+
+
+        
+        //transfer::transfer(cam, ctx.sender()); //IMPORTANTE VER QUE HACER AQUI. SI DEJAR COMO ESTÁ O BIEN MANDAR AL ADMIN U OTRA COSA
+        transfer::share_object(cam);
+
+    }
 
 
 
@@ -159,5 +181,30 @@ module crowdfunding_app::crowdfunding_app{
 
 
 
+    public entry fun claim_funds(campaign: &mut Campaign, ctx: &mut TxContext) {
+        assert!(tx_context::sender(ctx) == campaign.owner, 1);
+        assert!(campaign.total_raised >= campaign.goal, 2);
+        assert!(campaign.is_active, 3);
+
+        let total = coin::value(&campaign.treasury);
+        let two_percent = total * 2 / 100;
+        let ninety_eight_percent = total - two_percent;
+
+        let funds_owner = coin::split(&mut campaign.treasury, ninety_eight_percent, ctx);
+        let funds_admin = coin::split(&mut campaign.treasury, two_percent, ctx);
+
+        transfer::public_transfer(funds_owner, campaign.owner);
+        transfer::public_transfer(funds_admin, @0x9f44045feeafbfb27342e9aa325bade7a558366993ab736fd01a02215a0379e6);
+    }
+
+
+
+
+
+
+
 
 }
+
+
+
