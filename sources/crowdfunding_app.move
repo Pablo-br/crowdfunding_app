@@ -64,7 +64,9 @@ module crowdfunding_app::crowdfunding_app{
     use std::string;
     use sui::object::{Self, UID};
     //use sui::coin::Coin;
-    use sui::coin::{Coin, zero};
+    //use sui::coin::{Coin, zero};
+    //use sui::coin::{Coin, zero, value, merge};
+    use sui::coin;
     use sui::sui::SUI;
 
     public struct Campaign has key, store{
@@ -75,7 +77,7 @@ module crowdfunding_app::crowdfunding_app{
         deadline: u64,
         total_raised: u64,
         is_active: bool,
-        treasury: Coin<SUI>,
+        treasury: coin::Coin<SUI>,
         //treasury: Coin<SUI>,
 
     }
@@ -105,23 +107,6 @@ module crowdfunding_app::crowdfunding_app{
         /// Create a new campaign
     
     #[lint_allow(self_transfer)]
-    /*public fun create_campaign(goal: u64, deadline: u64, ctx: &mut TxContext): Campaign {//entry 
-        let id = object::new(ctx);
-        let owner = tx_context::sender(ctx);
-        //let treasury = sui::coin::zero;//zero<SUI>(); //coin::zero<SUI>();
-        let cam = Campaign {
-            id,
-            owner,
-            goal,
-            deadline,
-            total_raised: 0,
-            is_active: true,
-            //treasury,
-        };
-        //transfer::public_transfer(cam, owner);
-        //return cam
-        transfer::transfer(cam, tx_context::sender(ctx));
-    }*/
     public entry fun create_campaign(goal: u64, deadline: u64, ctx: &mut TxContext) {
     //let id = object::new(ctx);
     //let owner = tx_context::sender(ctx);
@@ -133,7 +118,7 @@ module crowdfunding_app::crowdfunding_app{
         deadline,
         total_raised: 0,
         is_active: true,
-        treasury: zero<SUI>(ctx),
+        treasury: coin::zero<SUI>(ctx),
     };
     transfer::transfer(cam, ctx.sender());
 }
@@ -157,6 +142,20 @@ module crowdfunding_app::crowdfunding_app{
         //transferir
         coin::merge(&mut campaign.treasury, coin);
     }*/
+
+   /* public entry fun contribute(campaign: &mut Campaign, coin: Coin<SUI>, ctx: &mut TxContext) {
+        let amount = value(&coin);
+        campaign.total_raised = campaign.total_raised + amount;
+        merge(&mut campaign.treasury, coin);
+    }*/
+
+    public entry fun contribute(campaign: &mut Campaign, coin: coin::Coin<SUI>, ctx: &mut TxContext) {
+        let amount = coin::value(&coin);
+        campaign.total_raised = campaign.total_raised + amount;
+        coin::join(&mut campaign.treasury, coin);
+
+    }
+
 
 
 }
