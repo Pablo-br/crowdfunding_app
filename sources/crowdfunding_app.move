@@ -17,6 +17,7 @@ module crowdfunding_app::crowdfunding_app{
     use sui::coin;
     use sui::sui::SUI;
     use sui::event;
+    use sui::clock::Clock;
 
 
 
@@ -90,9 +91,12 @@ module crowdfunding_app::crowdfunding_app{
 
     //Creates a campaign
     #[lint_allow(self_transfer)]
-    public entry fun create_campaign(goal: u64, deadline: u64, name: string::String,description: string::String ,ctx: &mut TxContext) {
+    public entry fun create_campaign(goal: u64, duration_ms: u64, name: string::String,description: string::String ,clock: &Clock, ctx: &mut TxContext) {// ,deadline: u64,
         //let id = object::new(ctx);
         //let owner = tx_context::sender(ctx);
+        let now = clock.timestamp_ms();
+        let deadline = now + duration_ms;
+
         let cam = Campaign {
             id: object::new(ctx) ,
             owner: tx_context::sender(ctx),
@@ -155,10 +159,10 @@ module crowdfunding_app::crowdfunding_app{
     }
 
 
-    public entry fun refund(campaign: &mut Campaign, ctx: &mut TxContext) { //PRIMERA VERSIÓN ¡¡¡¡PONER QUE SOLO ADMIN O PERSONAS PERMITIDAS (AdminCap)!!!!!
+    public entry fun refund(campaign: &mut Campaign, clock: &Clock, ctx: &mut TxContext) { //PRIMERA VERSIÓN ¡¡¡¡PONER QUE SOLO ADMIN O PERSONAS PERMITIDAS (AdminCap)!!!!!
 
         // Solo el admin puede ejecutar el reembolso
-        assert!(tx_context::sender(ctx) == campaign.admin, 1);
+        assert!(tx_context::sender(ctx) == campaign.admin || clock.timestamp_ms() > campaign.deadline, 1);
         // Solo permite reembolsos si la campaña NO alcanzó el goal
         assert!(campaign.total_raised < campaign.goal, 0);
 
