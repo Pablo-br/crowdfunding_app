@@ -16,6 +16,7 @@ module crowdfunding_app::crowdfunding_app{
     //use sui::coin::{Coin, zero, value, merge};
     use sui::coin;
     use sui::sui::SUI;
+    use sui::event;
 
 
 
@@ -36,6 +37,14 @@ module crowdfunding_app::crowdfunding_app{
             },
             new_admin,
         )
+    }
+
+    // 👇 añadido: evento para que el frontend pueda listar campañas
+    public struct CampaignCreated has copy, drop {
+        campaign_id: address,
+        owner: address,
+        goal: u64,
+        deadline: u64,
     }
 
 
@@ -91,6 +100,15 @@ module crowdfunding_app::crowdfunding_app{
         treasury: coin::zero<SUI>(ctx),
         contributions: vector::empty<Contribution>(),
     };
+
+    // 👇 emitimos evento para el frontend
+    event::emit(CampaignCreated {
+        campaign_id: object::uid_to_address(&cam.id),
+        owner: cam.owner,
+        goal,
+        deadline,
+    });
+
     //transfer::transfer(cam, ctx.sender()); //IMPORTANTE VER QUE HACER AQUI. SI DEJAR COMO ESTÁ O BIEN MANDAR AL ADMIN U OTRA COSA
     transfer::share_object(cam);
 
@@ -156,7 +174,6 @@ module crowdfunding_app::crowdfunding_app{
         //desactiva la campaña
         campaign.is_active = false;
     }
-
 
 
 
