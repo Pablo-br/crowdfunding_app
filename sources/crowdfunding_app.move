@@ -19,7 +19,7 @@ module crowdfunding_app::crowdfunding_app{
 
 
 
-    public struct AdminCap has key {
+    /*public struct AdminCap has key {
         id: UID
     }
 
@@ -36,7 +36,7 @@ module crowdfunding_app::crowdfunding_app{
             },
             new_admin,
         )
-    }
+    }*/
 
 
     public struct Campaign has key, store{
@@ -129,7 +129,7 @@ module crowdfunding_app::crowdfunding_app{
     }
 
 
-    public entry fun refund(admin_cap: &mut AdminCap,campaign: &mut Campaign, ctx: &mut TxContext) { //PRIMERA VERSIÓN ¡¡¡¡PONER QUE SOLO ADMIN O PERSONAS PERMITIDAS (AdminCap)!!!!!
+    public entry fun refund(campaign: &mut Campaign, ctx: &mut TxContext) { //PRIMERA VERSIÓN ¡¡¡¡PONER QUE SOLO ADMIN O PERSONAS PERMITIDAS (AdminCap)!!!!!
 
         // Solo el admin puede ejecutar el reembolso
         assert!(tx_context::sender(ctx) == campaign.admin, 1);
