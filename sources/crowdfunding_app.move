@@ -138,10 +138,31 @@ module crowdfunding_app::crowdfunding_app{
     /// - `coin`: The SUI coin being contributed.
     /// - `ctx`: Mutable transaction context.
 
-    public entry fun contribute(campaign: &mut Campaign, coin: coin::Coin<SUI>, ctx: &mut TxContext) {
+    public entry fun contribute(campaign: &mut Campaign, coin: coin::Coin<SUI>,  clock: &Clock, ctx: &mut TxContext) {//clock: &Clock,
+        
+        let now = clock.timestamp_ms();
+        if (now > campaign.deadline || !campaign.is_active) {
+            // Llama a refund para reembolsar a todos los contribuyentes
+            refund(campaign, clock, ctx);
+            // Devuelve la moneda al usuario que intentó contribuir fuera de plazo
+            transfer::public_transfer(coin, tx_context::sender(ctx));
+            return;
+        };
+        
+        
+        
         let amount = coin::value(&coin);
         campaign.total_raised = campaign.total_raised + amount;
         coin::join(&mut campaign.treasury, coin);
+
+        /*let now = clock.timestamp_ms();
+        if (now > campaign.deadline || !campaign.is_active) {
+            // Llama a refund para reembolsar a todos los contribuyentes
+            refund(campaign, clock, ctx);
+            // Devuelve la moneda al usuario que intentó contribuir fuera de plazo
+            transfer::public_transfer(coin, tx_context::sender(ctx));
+            return;
+        };*/
 
         // Crear el objeto Contribution
         let contribution = Contribution {
