@@ -60,6 +60,8 @@ module crowdfunding_app::crowdfunding_app{
         is_active: bool,
         treasury: coin::Coin<SUI>,
         contributions: vector<Contribution>,
+        name: string::String,        
+        description: string::String,
         //treasury: Coin<SUI>,
 
     }
@@ -88,7 +90,7 @@ module crowdfunding_app::crowdfunding_app{
 
     //Creates a campaign
     #[lint_allow(self_transfer)]
-    public entry fun create_campaign(goal: u64, deadline: u64, ctx: &mut TxContext) {
+    public entry fun create_campaign(goal: u64, deadline: u64, name: string::String,description: string::String ,ctx: &mut TxContext) {
         //let id = object::new(ctx);
         //let owner = tx_context::sender(ctx);
         let cam = Campaign {
@@ -101,6 +103,8 @@ module crowdfunding_app::crowdfunding_app{
             is_active: true,
             treasury: coin::zero<SUI>(ctx),
             contributions: vector::empty<Contribution>(),
+            name,
+            description,
         };
 
         // 👇 emitimos evento para el frontend
@@ -195,6 +199,8 @@ module crowdfunding_app::crowdfunding_app{
 
         transfer::public_transfer(funds_owner, campaign.owner);
         transfer::public_transfer(funds_admin, @0x9f44045feeafbfb27342e9aa325bade7a558366993ab736fd01a02215a0379e6);
+
+        campaign.is_active = false;
     }
 
 
