@@ -127,55 +127,67 @@ module crowdfunding_app::crowdfunding_app{
     }
 
     /// Allows a user to contribute SUI coins to a crowdfunding campaign.
-    /// 
-    /// - Adds the contributed amount to the campaign's total raised.
-    /// - Joins the contributed coin into the campaign's treasury.
-    /// - Creates a new `Contribution` object recording the contributor, amount, and refund status.
-    /// - Stores the `Contribution` in the campaign's contributions vector.
-    /// 
+    ///
+    /// - If the campaign deadline has passed and the goal was not reached, refunds all contributors and returns the coin to the sender.
+    /// - If the deadline has passed but the goal was reached, returns the coin to the sender.
+    /// - If the campaign is not active, returns the coin to the sender.
+    /// - Otherwise:
+    ///   - Adds the contributed amount to the campaign's total raised.
+    ///   - Joins the contributed coin into the campaign's treasury.
+    ///   - Creates a new `Contribution` object recording the contributor, amount, and refund status.
+    ///   - Stores the `Contribution` in the campaign's contributions vector.
+    ///
     /// Parameters:
     /// - `campaign`: Mutable reference to the `Campaign` being contributed to.
     /// - `coin`: The SUI coin being contributed.
+    /// - `clock`: Reference to the current `Clock`.
     /// - `ctx`: Mutable transaction context.
 
     public entry fun contribute(campaign: &mut Campaign, coin: coin::Coin<SUI>,  clock: &Clock, ctx: &mut TxContext) {//clock: &Clock,
         
+
         let now = clock.timestamp_ms();
-        if (now > campaign.deadline || !campaign.is_active) {
+
+        // Solo refund si está fuera de plazo y no se llegó al goal
+        if (now > campaign.deadline && campaign.total_raised < campaign.goal) {
             // Llama a refund para reembolsar a todos los contribuyentes
             refund(campaign, clock, ctx);
             // Devuelve la moneda al usuario que intentó contribuir fuera de plazo
             transfer::public_transfer(coin, tx_context::sender(ctx));
             return;
         };
-        
-        
-        
-        let amount = coin::value(&coin);
-        campaign.total_raised = campaign.total_raised + amount;
-        coin::join(&mut campaign.treasury, coin);
 
-        /*let now = clock.timestamp_ms();
-        if (now > campaign.deadline || !campaign.is_active) {
-            // Llama a refund para reembolsar a todos los contribuyentes
-            refund(campaign, clock, ctx);
-            // Devuelve la moneda al usuario que intentó contribuir fuera de plazo
+        // Si está fuera de plazo pero se llegó al goal, solo devuelve la moneda
+        if (now > campaign.deadline) {
             transfer::public_transfer(coin, tx_context::sender(ctx));
             return;
-        };*/
-
-        // Crear el objeto Contribution
-        let contribution = Contribution {
-            id: object::new(ctx),
-            campaign_id: campaign.owner, // O usa la dirección del objeto Campaign si la tienes
-            contributor: tx_context::sender(ctx),
-            amount,
-            refunded: false,
         };
 
-        // Transferir el objeto Contribution al contribuyente
-        //transfer::transfer(contribution, tx_context::sender(ctx));
-        vector::push_back(&mut campaign.contributions, contribution);
+        // Si la campaña no está activa, devuelve la moneda
+        if (!campaign.is_active) {
+            transfer::public_transfer(coin, tx_context::sender(ctx));
+            return;
+        };
+            
+            
+            
+            let amount = coin::value(&coin);
+            campaign.total_raised = campaign.total_raised + amount;
+            coin::join(&mut campaign.treasury, coin);
+
+
+            // Crear el objeto Contribution
+            let contribution = Contribution {
+                id: object::new(ctx),
+                campaign_id: campaign.owner, // O usa la dirección del objeto Campaign si la tienes
+                contributor: tx_context::sender(ctx),
+                amount,
+                refunded: false,
+            };
+
+            // Transferir el objeto Contribution al contribuyente
+            //transfer::transfer(contribution, tx_context::sender(ctx));
+            vector::push_back(&mut campaign.contributions, contribution);
 
     }
 
