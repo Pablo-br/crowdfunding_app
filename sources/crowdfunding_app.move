@@ -20,28 +20,15 @@ module crowdfunding_app::crowdfunding_app{
     use sui::clock::Clock;
 
 
-
-
-    /*public struct AdminCap has key {
-        id: UID
-    }
-
-    fun init(ctx: &mut TxContext) {//entry
-        transfer::transfer(AdminCap {
-            id: object::new(ctx)
-        }, ctx.sender())
-    }
-
-    public fun add_admin(_cap: &AdminCap, new_admin: address, ctx: &mut TxContext) {
-        transfer::transfer(
-            AdminCap {
-                id: object::new(ctx)
-            },
-            new_admin,
-        )
-    }*/
-
-    // 👇 añadido: evento para que el frontend pueda listar campañas
+    /// Event emitted when a new campaign is created.
+    /// 
+    /// This event allows the frontend or indexers to track and list all campaigns.
+    /// 
+    /// Fields:
+    /// - `campaign_id`: The unique address of the newly created campaign.
+    /// - `owner`: The address of the campaign creator/owner.
+    /// - `goal`: The funding goal for the campaign (in the smallest unit, e.g., SUI).
+    /// - `deadline`: The campaign's deadline as a Unix timestamp.
     public struct CampaignCreated has copy, drop {
         campaign_id: address,
         owner: address,
@@ -50,6 +37,10 @@ module crowdfunding_app::crowdfunding_app{
     }
 
 
+    /// Represents a crowdfunding campaign.
+    /// Stores campaign details such as the owner, admin, funding goal, deadline, total amount raised, 
+    /// status (active or not), treasury holding the raised SUI coins, list of contributions, 
+    /// and metadata like name and description.
 
     public struct Campaign has key, store{
         id: UID,
@@ -63,9 +54,12 @@ module crowdfunding_app::crowdfunding_app{
         contributions: vector<Contribution>,
         name: string::String,        
         description: string::String,
-        //treasury: Coin<SUI>,
 
     }
+
+    /// Represents a single contribution to a crowdfunding campaign.
+    /// Stores the unique ID, the campaign's address, the contributor's address,
+    /// the contributed amount, and whether the contribution has been refunded.
 
     public struct Contribution has key,store{
         id: UID,              // Identificador único del objeto en Sui
@@ -78,22 +72,28 @@ module crowdfunding_app::crowdfunding_app{
     }
 
 
-    /*
-    Crear campaña.
-    Contribuir a una campaña.
-    Reclamar fondos si la campaña es exitosa.
-    Devolver fondos si la campaña falla.
-
-
-
-    */
+    
     
 
-    //Creates a campaign
+    /// Creates a new crowdfunding campaign.
+    /// 
+    /// - Initializes a new `Campaign` object with the specified funding goal, duration, name, and description.
+    /// - Sets the campaign owner to the transaction sender and the admin to a fixed address.
+    /// - Calculates the campaign deadline based on the current timestamp and the provided duration.
+    /// - Initializes the campaign treasury and contributions list.
+    /// - Emits a `CampaignCreated` event for frontend tracking.
+    /// - Shares the campaign object so it can be accessed on-chain.
+    /// 
+    /// Parameters:
+    /// - `goal`: The funding goal for the campaign.
+    /// - `duration_ms`: Duration of the campaign in milliseconds.
+    /// - `name`: Name of the campaign.
+    /// - `description`: Description of the campaign.
+    /// - `clock`: Reference to the on-chain clock for timestamping.
+    /// - `ctx`: Mutable transaction context.
+    /// 
     #[lint_allow(self_transfer)]
-    public entry fun create_campaign(goal: u64, duration_ms: u64, name: string::String,description: string::String ,clock: &Clock, ctx: &mut TxContext) {// ,deadline: u64,
-        //let id = object::new(ctx);
-        //let owner = tx_context::sender(ctx);
+    public entry fun create_campaign(goal: u64, duration_ms: u64, name: string::String,description: string::String ,clock: &Clock, ctx: &mut TxContext) {
         let now = clock.timestamp_ms();
         let deadline = now + duration_ms;
 
@@ -111,7 +111,7 @@ module crowdfunding_app::crowdfunding_app{
             description,
         };
 
-        // 👇 emitimos evento para el frontend
+        //  emitimos evento para el frontend
         event::emit(CampaignCreated {
             campaign_id: object::uid_to_address(&cam.id),
             owner: cam.owner,
@@ -126,17 +126,17 @@ module crowdfunding_app::crowdfunding_app{
 
     }
 
-
-
-    /*
-    para mejorar debeía poder enviar los fondos a una cartera temporal o tesoro en el cual cuando se alcanze el límite el propietario lo pueda reclamar
-     !Buscar como hacer!
-
-
-     Ver si usar el modelo flexible o todo o nada
-
-     Ver si cobramos comisiones
-    */
+    /// Allows a user to contribute SUI coins to a crowdfunding campaign.
+    /// 
+    /// - Adds the contributed amount to the campaign's total raised.
+    /// - Joins the contributed coin into the campaign's treasury.
+    /// - Creates a new `Contribution` object recording the contributor, amount, and refund status.
+    /// - Stores the `Contribution` in the campaign's contributions vector.
+    /// 
+    /// Parameters:
+    /// - `campaign`: Mutable reference to the `Campaign` being contributed to.
+    /// - `coin`: The SUI coin being contributed.
+    /// - `ctx`: Mutable transaction context.
 
     public entry fun contribute(campaign: &mut Campaign, coin: coin::Coin<SUI>, ctx: &mut TxContext) {
         let amount = coin::value(&coin);
@@ -158,6 +158,20 @@ module crowdfunding_app::crowdfunding_app{
 
     }
 
+    /// Refunds all contributors of a campaign if the funding goal was not reached.
+    /// 
+    /// - Only the campaign admin or anyone after the campaign deadline can execute refunds.
+    /// - Ensures refunds are only processed if the campaign did NOT reach its funding goal.
+    /// - Iterates through all contributions:
+    ///     - Marks each as refunded.
+    ///     - Splits the corresponding amount from the campaign treasury.
+    ///     - Transfers the refund back to the original contributor.
+    /// - Deactivates the campaign after processing refunds.
+    /// 
+    /// Parameters:
+    /// - `campaign`: Mutable reference to the `Campaign` to refund.
+    /// - `clock`: Reference to the on-chain clock for deadline checks.
+    /// - `ctx`: Mutable transaction context.
 
     public entry fun refund(campaign: &mut Campaign, clock: &Clock, ctx: &mut TxContext) { //PRIMERA VERSIÓN ¡¡¡¡PONER QUE SOLO ADMIN O PERSONAS PERMITIDAS (AdminCap)!!!!!
 
@@ -189,6 +203,21 @@ module crowdfunding_app::crowdfunding_app{
 
 
 
+
+    /// Allows the campaign owner to claim the raised funds if the campaign was successful.
+    /// 
+    /// - Only the campaign owner can call this function.
+    /// - Ensures the campaign reached its funding goal and is still active.
+    /// - Calculates a 2% fee for the admin and 98% for the owner.
+    /// - Splits the treasury accordingly:
+    ///     - 98% is sent to the campaign owner.
+    ///     - 2% is sent to the admin address.
+    /// - Deactivates the campaign after funds are claimed.
+    /// 
+    /// Parameters:
+    /// - `campaign`: Mutable reference to the `Campaign` to claim funds from.
+    /// - `ctx`: Mutable transaction context.
+    
     public entry fun claim_funds(campaign: &mut Campaign, ctx: &mut TxContext) {
         assert!(tx_context::sender(ctx) == campaign.owner, 1);
         assert!(campaign.total_raised >= campaign.goal, 2);
@@ -215,6 +244,26 @@ module crowdfunding_app::crowdfunding_app{
 
 
 }
+
+
+/*public struct AdminCap has key {
+        id: UID
+    }
+
+    fun init(ctx: &mut TxContext) {//entry
+        transfer::transfer(AdminCap {
+            id: object::new(ctx)
+        }, ctx.sender())
+    }
+
+    public fun add_admin(_cap: &AdminCap, new_admin: address, ctx: &mut TxContext) {
+        transfer::transfer(
+            AdminCap {
+                id: object::new(ctx)
+            },
+            new_admin,
+        )
+    }*/
 
 
 
