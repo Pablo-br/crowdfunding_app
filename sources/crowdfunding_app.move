@@ -70,7 +70,7 @@ module crowdfunding_app::crowdfunding_app{
         treasury: coin::zero<SUI>(ctx),
         contributions: vector::empty<Contribution>(),
     };
-    transfer::transfer(cam, ctx.sender());
+    transfer::transfer(cam, ctx.sender()); //IMPORTANTE VER QUE HACER AQUI. SI DEJAR COMO ESTÁ O BIEN MANDAR AL ADMIN O OTRA COSA
 }
 
 
