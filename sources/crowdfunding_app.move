@@ -18,6 +18,27 @@ module crowdfunding_app::crowdfunding_app{
     use sui::sui::SUI;
 
 
+
+    public struct AdminCap has key {
+        id: UID
+    }
+
+    fun init(ctx: &mut TxContext) {//entry
+        transfer::transfer(AdminCap {
+            id: object::new(ctx)
+        }, ctx.sender())
+    }
+
+    public fun add_admin(_cap: &AdminCap, new_admin: address, ctx: &mut TxContext) {
+        transfer::transfer(
+            AdminCap {
+                id: object::new(ctx)
+            },
+            new_admin,
+        )
+    }
+
+
     public struct Campaign has key, store{
         id: UID,
         owner: address,
@@ -70,7 +91,9 @@ module crowdfunding_app::crowdfunding_app{
         treasury: coin::zero<SUI>(ctx),
         contributions: vector::empty<Contribution>(),
     };
-    transfer::transfer(cam, ctx.sender()); //IMPORTANTE VER QUE HACER AQUI. SI DEJAR COMO ESTÁ O BIEN MANDAR AL ADMIN U OTRA COSA
+    //transfer::transfer(cam, ctx.sender()); //IMPORTANTE VER QUE HACER AQUI. SI DEJAR COMO ESTÁ O BIEN MANDAR AL ADMIN U OTRA COSA
+    transfer::share_object(cam);
+
 }
 
 
@@ -106,7 +129,7 @@ module crowdfunding_app::crowdfunding_app{
     }
 
 
-    public entry fun refund(campaign: &mut Campaign, ctx: &mut TxContext) { //PRIMERA VERSIÓN ¡¡¡¡PONER QUE SOLO ADMIN O PERSONAS PERMITIDAS (AdminCap)!!!!!
+    public entry fun refund(admin_cap: &mut AdminCap,campaign: &mut Campaign, ctx: &mut TxContext) { //PRIMERA VERSIÓN ¡¡¡¡PONER QUE SOLO ADMIN O PERSONAS PERMITIDAS (AdminCap)!!!!!
 
         // Solo el admin puede ejecutar el reembolso
         assert!(tx_context::sender(ctx) == campaign.admin, 1);
