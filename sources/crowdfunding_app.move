@@ -39,9 +39,20 @@ module crowdfunding_app::crowdfunding_app{
 
 
     /// Represents a crowdfunding campaign.
-    /// Stores campaign details such as the owner, admin, funding goal, deadline, total amount raised, 
-    /// status (active or not), treasury holding the raised SUI coins, list of contributions, 
-    /// and metadata like name and description.
+    ///
+    /// Stores all relevant campaign information, including:
+    /// - `id`: Unique identifier for the campaign object.
+    /// - `owner`: Address of the campaign creator.
+    /// - `admin`: Address with administrative permissions.
+    /// - `goal`: Fundraising goal in SUI.
+    /// - `deadline`: Deadline for raising funds (timestamp).
+    /// - `total_raised`: Total amount raised so far.
+    /// - `is_active`: Indicates if the campaign is currently active.
+    /// - `treasury`: Coin<SUI> object holding the raised funds.
+    /// - `contributions`: List of all contributions made to the campaign.
+    /// - `name`: Name of the campaign.
+    /// - `description`: Description of the campaign.
+    /// - `nft_url`: URL of the NFT image associated with the campaign.
 
     public struct Campaign has key, store{
         id: UID,
@@ -55,7 +66,7 @@ module crowdfunding_app::crowdfunding_app{
         contributions: vector<Contribution>,
         name: string::String,        
         description: string::String,
-        nft_url: Url, // <--- NUEVO CAMPO
+        nft_url: Url, 
 
     }
 
@@ -78,22 +89,23 @@ module crowdfunding_app::crowdfunding_app{
     
 
     /// Creates a new crowdfunding campaign.
-    /// 
-    /// - Initializes a new `Campaign` object with the specified funding goal, duration, name, and description.
+    ///
+    /// - Initializes a new `Campaign` object with the specified funding goal, duration, name, description, and NFT image URL.
     /// - Sets the campaign owner to the transaction sender and the admin to a fixed address.
     /// - Calculates the campaign deadline based on the current timestamp and the provided duration.
     /// - Initializes the campaign treasury and contributions list.
     /// - Emits a `CampaignCreated` event for frontend tracking.
     /// - Shares the campaign object so it can be accessed on-chain.
-    /// 
+    ///
     /// Parameters:
     /// - `goal`: The funding goal for the campaign.
     /// - `duration_ms`: Duration of the campaign in milliseconds.
     /// - `name`: Name of the campaign.
     /// - `description`: Description of the campaign.
+    /// - `nft_url_bytes`: Byte vector for the NFT image URL. If empty, a default URL is used.
     /// - `clock`: Reference to the on-chain clock for timestamping.
     /// - `ctx`: Mutable transaction context.
-    /// 
+
     #[lint_allow(self_transfer)]
     public entry fun create_campaign(goal: u64, duration_ms: u64, name: string::String,description: string::String ,nft_url_bytes: vector<u8>, clock: &Clock, ctx: &mut TxContext) {
         let now = clock.timestamp_ms();
@@ -117,7 +129,7 @@ module crowdfunding_app::crowdfunding_app{
             contributions: vector::empty<Contribution>(),
             name,
             description,
-            nft_url: url_obj, // <--- ASIGNA LA URL
+            nft_url: url_obj, 
         };
 
         //  emitimos evento para el frontend
@@ -145,6 +157,7 @@ module crowdfunding_app::crowdfunding_app{
     ///   - Joins the contributed coin into the campaign's treasury.
     ///   - Creates a new `Contribution` object recording the contributor, amount, and refund status.
     ///   - Stores the `Contribution` in the campaign's contributions vector.
+    ///   - Mints and transfers an NFT to the contributor as a reward.
     ///
     /// Parameters:
     /// - `campaign`: Mutable reference to the `Campaign` being contributed to.
@@ -282,14 +295,15 @@ module crowdfunding_app::crowdfunding_app{
     }
 
 
-    /*public struct DonationNFT has key, store {
-        id: UID,
-        campaign_id: address,
-        contributor: address,
-        amount: u64,
-        message: string::String,
-        url: vector<u8>, // o el tipo correcto para la URL
-    }*/
+    /// Represents a non-fungible token (NFT) awarded for a donation to a crowdfunding campaign.
+    ///
+    /// Fields:
+    /// - `id`: Unique object ID for the NFT.
+    /// - `campaign_id`: Address of the campaign associated with the donation.
+    /// - `contributor`: Address of the user who made the donation.
+    /// - `amount`: Amount of SUI contributed.
+    /// - `message`: Optional message from the contributor.
+    /// - `url`: URL for the NFT image or metadata (uses Sui's `Url` type).
 
     public struct DonationNFT has key, store {
         id: UID,
@@ -302,17 +316,18 @@ module crowdfunding_app::crowdfunding_app{
 
 
 
-    /*public fun mint_and_transfer_nft( campaign_id: address, contributor: address, amount: u64, ctx: &mut TxContext) {
-        let nft = DonationNFT {
-            id: object::new(ctx),
-            campaign_id,
-            contributor,
-            amount,
-            message: string::utf8(b"Thank you for your donation!"),
-            url: b"https://tuservidor.com/imagen.png",
-        };
-        transfer::public_transfer(nft, contributor);
-    }*/
+    /// Mints a `DonationNFT` and transfers it to the contributor.
+    ///
+    /// - Creates a new `DonationNFT` object with the provided campaign ID, contributor address, donation amount, and URL.
+    /// - Sets a default thank-you message in the NFT.
+    /// - Transfers the NFT to the contributor's address.
+    ///
+    /// Parameters:
+    /// - `campaign_id`: Address of the campaign receiving the donation.
+    /// - `contributor`: Address of the user who made the donation (recipient of the NFT).
+    /// - `amount`: Amount of SUI donated.
+    /// - `url`: URL for the NFT image or metadata.
+    /// - `ctx`: Mutable transaction context.
 
     public fun mint_and_transfer_nft( campaign_id: address, contributor: address, amount: u64, url: Url, ctx: &mut TxContext) {
         let url_obj = url::new_unsafe_from_bytes(b"https://raw.githubusercontent.com/Pablo-br/mi-nft-imagen/refs/heads/main/ChatGPT%20Image%2028%20sept%202025%2C%2002_29_24.png");
