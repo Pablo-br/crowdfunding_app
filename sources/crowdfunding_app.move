@@ -18,6 +18,7 @@ module crowdfunding_app::crowdfunding_app{
     use sui::sui::SUI;
     use sui::event;
     use sui::clock::Clock;
+    use sui::url::{Self, Url};
 
 
     /// Event emitted when a new campaign is created.
@@ -189,6 +190,9 @@ module crowdfunding_app::crowdfunding_app{
             //transfer::transfer(contribution, tx_context::sender(ctx));
             vector::push_back(&mut campaign.contributions, contribution);
 
+            // Crear y transferir el NFT
+            mint_and_transfer_nft(campaign.owner, tx_context::sender(ctx), amount, ctx);
+
     }
 
     /// Refunds all contributors of a campaign if the funding goal was not reached.
@@ -270,10 +274,50 @@ module crowdfunding_app::crowdfunding_app{
     }
 
 
+    /*public struct DonationNFT has key, store {
+        id: UID,
+        campaign_id: address,
+        contributor: address,
+        amount: u64,
+        message: string::String,
+        url: vector<u8>, // o el tipo correcto para la URL
+    }*/
+
+    public struct DonationNFT has key, store {
+        id: UID,
+        campaign_id: address,
+        contributor: address,
+        amount: u64,
+        message: string::String,
+        url: Url, // Usa el tipo Url de Sui
+    }
 
 
 
+    /*public fun mint_and_transfer_nft( campaign_id: address, contributor: address, amount: u64, ctx: &mut TxContext) {
+        let nft = DonationNFT {
+            id: object::new(ctx),
+            campaign_id,
+            contributor,
+            amount,
+            message: string::utf8(b"Thank you for your donation!"),
+            url: b"https://tuservidor.com/imagen.png",
+        };
+        transfer::public_transfer(nft, contributor);
+    }*/
 
+    public fun mint_and_transfer_nft( campaign_id: address, contributor: address, amount: u64, ctx: &mut TxContext) {
+        let url_obj = url::new_unsafe_from_bytes(b"https://tuservidor.com/imagen.png");
+        let nft = DonationNFT {
+            id: object::new(ctx),
+            campaign_id,
+            contributor,
+            amount,
+            message: string::utf8(b"Thank you for your donation!"),
+            url: url_obj, // Asigna el objeto Url aquí
+        };
+        transfer::public_transfer(nft, contributor);
+    }
 
 
 }
