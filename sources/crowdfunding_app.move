@@ -55,6 +55,7 @@ module crowdfunding_app::crowdfunding_app{
         contributions: vector<Contribution>,
         name: string::String,        
         description: string::String,
+        nft_url: Url, // <--- NUEVO CAMPO
 
     }
 
@@ -94,9 +95,15 @@ module crowdfunding_app::crowdfunding_app{
     /// - `ctx`: Mutable transaction context.
     /// 
     #[lint_allow(self_transfer)]
-    public entry fun create_campaign(goal: u64, duration_ms: u64, name: string::String,description: string::String ,clock: &Clock, ctx: &mut TxContext) {
+    public entry fun create_campaign(goal: u64, duration_ms: u64, name: string::String,description: string::String ,nft_url_bytes: vector<u8>, clock: &Clock, ctx: &mut TxContext) {
         let now = clock.timestamp_ms();
         let deadline = now + duration_ms;
+
+        let url_obj = if (vector::is_empty(&nft_url_bytes)) {
+            url::new_unsafe_from_bytes(b"https://raw.githubusercontent.com/Pablo-br/mi-nft-imagen/refs/heads/main/ChatGPT%20Image%2028%20sept%202025%2C%2002_29_24.png")
+        } else {
+            url::new_unsafe_from_bytes(nft_url_bytes)
+        };
 
         let cam = Campaign {
             id: object::new(ctx) ,
@@ -110,6 +117,7 @@ module crowdfunding_app::crowdfunding_app{
             contributions: vector::empty<Contribution>(),
             name,
             description,
+            nft_url: url_obj, // <--- ASIGNA LA URL
         };
 
         //  emitimos evento para el frontend
@@ -191,7 +199,7 @@ module crowdfunding_app::crowdfunding_app{
             vector::push_back(&mut campaign.contributions, contribution);
 
             // Crear y transferir el NFT
-            mint_and_transfer_nft(campaign.owner, tx_context::sender(ctx), amount, ctx);
+            mint_and_transfer_nft(campaign.owner, tx_context::sender(ctx), amount,campaign.nft_url ,ctx);
 
     }
 
@@ -306,18 +314,25 @@ module crowdfunding_app::crowdfunding_app{
         transfer::public_transfer(nft, contributor);
     }*/
 
-    public fun mint_and_transfer_nft( campaign_id: address, contributor: address, amount: u64, ctx: &mut TxContext) {
-        let url_obj = url::new_unsafe_from_bytes(b"https://tuservidor.com/imagen.png");
+    public fun mint_and_transfer_nft( campaign_id: address, contributor: address, amount: u64, url: Url, ctx: &mut TxContext) {
+        let url_obj = url::new_unsafe_from_bytes(b"https://raw.githubusercontent.com/Pablo-br/mi-nft-imagen/refs/heads/main/ChatGPT%20Image%2028%20sept%202025%2C%2002_29_24.png");
         let nft = DonationNFT {
             id: object::new(ctx),
             campaign_id,
             contributor,
             amount,
             message: string::utf8(b"Thank you for your donation!"),
-            url: url_obj, // Asigna el objeto Url aquí
+            url,
         };
         transfer::public_transfer(nft, contributor);
     }
+
+
+
+
+
+
+
 
 
 }
